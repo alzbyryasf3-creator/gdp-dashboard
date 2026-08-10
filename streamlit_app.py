@@ -1,151 +1,171 @@
-import streamlit as st
+import numpy as np
 import pandas as pd
-import math
-from pathlib import Path
+import plotly.express as px
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+import streamlit as st
 
-# Set the title and favicon that appear in the Browser's tab bar.
+# =========================================================
+# 1. إعدادات الشاشة والترويسة الرسمية
+# =========================================================
 st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
+    page_title="Sabafon AI Network Guardian", page_icon="📡", layout="wide"
 )
 
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
-
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
-
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
+# ترويسة مشروع التخرج
+st.markdown(
     """
-
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
-
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
-
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
-
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
-
-    return gdp_df
-
-gdp_df = get_gdp_data()
-
-# -----------------------------------------------------------------------------
-# Draw the actual page
-
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
-
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
-
-# Add some spacing
-''
-''
-
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
-
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
-
-countries = gdp_df['Country Code'].unique()
-
-if not len(countries):
-    st.warning("Select at least one country")
-
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
+    <div style="background-color:#004B87;padding:15px;border-radius:10px;text-align:center;color:white;">
+        <h2>📡 مشروع بحث تخرج: نظام Sabafon AI Guardian</h2>
+        <h4>الأكاديمية العليا للقرآن الكريم وعلومه - كلية الإعلام - قسم الإعلام</h4>
+        <p><b>إعداد الطلاب:</b> عاصف الزبيري | خالد العبيدي | جلال سوار | أحمد خميس</p>
+        <p><b>تحت إشراف الدكتور:</b> محمد القليصي</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 
-''
-''
+st.markdown("---")
 
 
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
+# =========================================================
+# 2. توليد البيانات الافتراضية محاكاة لشبكة سبافون (Data Simulation)
+# =========================================================
+@st.cache_data
+def generate_sabafon_data():
+    np.random.seed(42)
+    n_towers = 250
 
-st.header(f'GDP in {to_year}', divider='gray')
+    # إحداثيات تقريبية لمواقع الأبراج في صنعاء والمحافظات
+    latitudes = 15.3694 + np.random.uniform(-0.08, 0.08, n_towers)
+    longitudes = 44.1910 + np.random.uniform(-0.08, 0.08, n_towers)
 
-''
+    # المؤشرات التقنية للشبكة
+    temperature = np.random.uniform(25, 85, n_towers)  # حرارة البرج C°
+    power_instability = np.random.uniform(
+        0, 35, n_towers
+    )  # نسبة تذبذب الطاقة %
+    traffic_load = np.random.uniform(
+        10, 100, n_towers
+    )  # الضغط وحركة المرور %
+    dropped_calls = np.random.uniform(
+        0, 12, n_towers
+    )  # نسبة الانقطاع في المكالمات %
 
-cols = st.columns(4)
+    # تحديد خطر العطل (1 = خطر عطل وشيك، 0 = مستقر)
+    risk_score = (
+        (temperature > 70).astype(int)
+        + (power_instability > 20).astype(int)
+        + (dropped_calls > 7).astype(int)
+    )
+    failure_risk = [1 if risk >= 2 else 0 for risk in risk_score]
 
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
+    df = pd.DataFrame(
+        {
+            "Tower_ID": [f"SAB-TOWER-{i+100}" for i in range(n_towers)],
+            "Latitude": latitudes,
+            "Longitude": longitudes,
+            "Temperature_C": temperature,
+            "Power_Instability_%": power_instability,
+            "Traffic_Load_%": traffic_load,
+            "Dropped_Calls_%": dropped_calls,
+            "Failure_Risk": failure_risk,
+        }
+    )
+    return df
 
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
 
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
+df_data = generate_sabafon_data()
 
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+# =========================================================
+# 3. تدريب نموذج الذكاء الاصطناعي (Machine Learning Model)
+# =========================================================
+X = df_data[
+    [
+        "Temperature_C",
+        "Power_Instability_%",
+        "Traffic_Load_%",
+        "Dropped_Calls_%",
+    ]
+]
+y = df_data["Failure_Risk"]
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+ai_model = RandomForestClassifier(n_estimators=100, random_state=42)
+ai_model.fit(X_train, y_train)
+
+# =========================================================
+# 4. لوحة الإحصائيات (KPI Dashboard)
+# =========================================================
+total_towers = len(df_data)
+at_risk_towers = len(df_data[df_data["Failure_Risk"] == 1])
+safe_towers = len(df_data[df_data["Failure_Risk"] == 0])
+model_acc = ai_model.score(X_test, y_test) * 100
+
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("إجمالي أبراج سبافون", total_towers)
+c2.metric("أبراج تعمل بكفاءة 🟢", safe_towers)
+c3.metric("أبراج تحت الخطر (تنبؤ) 🔴", at_risk_towers)
+c4.metric("دقة الذكاء الاصطناعي", f"{model_acc:.1f}%")
+
+st.markdown("---")
+
+# =========================================================
+# 5. عرض الخريطة التفاعلية
+# =========================================================
+st.subheader("🗺️ خريطة التغطية والمراقبة الاستباقية لأبراج سبافون")
+
+fig = px.scatter_mapbox(
+    df_data,
+    lat="Latitude",
+    lon="Longitude",
+    color="Failure_Risk",
+    color_discrete_map={0: "green", 1: "red"},
+    size="Traffic_Load_%",
+    hover_name="Tower_ID",
+    hover_data=[
+        "Temperature_C",
+        "Power_Instability_%",
+        "Traffic_Load_%",
+        "Dropped_Calls_%",
+    ],
+    zoom=10,
+    height=480,
+)
+fig.update_layout(mapbox_style="open-street-map")
+st.plotly_chart(fig, use_container_width=True)
+
+# =========================================================
+# 6. أداة الفحص والتنبؤ الفوري لمستشعرات البرج
+# =========================================================
+st.markdown("---")
+st.subheader("🧪 أداة المهندس: فحص واختبار حالة برج محدد")
+
+col_left, col_right = st.columns(2)
+
+with col_left:
+    input_temp = st.slider("درجة حرارة المولد والبرج (C°)", 20.0, 100.0, 40.0)
+    input_power = st.slider("نسبة تذبذب التيار الكهربائي (%)", 0.0, 50.0, 10.0)
+
+with col_right:
+    input_load = st.slider("نسبة الضغط وحركة المرور (%)", 0.0, 100.0, 60.0)
+    input_drops = st.slider("نسبة انقطاع المكالمات (%)", 0.0, 20.0, 2.0)
+
+# إجراء التنبؤ
+sample_input = pd.DataFrame(
+    [[input_temp, input_power, input_load, input_drops]], columns=X.columns
+)
+pred = ai_model.predict(sample_input)[0]
+prob = ai_model.predict_proba(sample_input)[0][1] * 100
+
+st.write("### 📊 نتيجة تحليل نظام الذكاء الاصطناعي:")
+if pred == 1:
+    st.error(
+        f"⚠️ **تحذير: عطل وشيك!** احتمالية الفشل هي **{prob:.1f}%**. يوصى بإرسال فريق الصيانة الميداني قبل انقطاع الخدمة."
+    )
+else:
+    st.success(
+        f"✅ **البرج بحالة جيدة.** نسبة الخطر المتوقعة هي **{prob:.1f}%** فقط."
+)
